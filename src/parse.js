@@ -99,10 +99,24 @@ const masks = {
 // A stateful parser that changes the offset whenever a value is retrieved.
 // The data is a DataView.
 function Parser(data, offset) {
+    this.stateStack = [];
     this.data = data;
     this.offset = offset;
     this.relativeOffset = 0;
 }
+
+Parser.prototype.pushState = function(noffset) {
+    this.stateStack.push({offset:this.offset,relativeOffset:this.relativeOffset});
+    this.offset = noffset;
+    this.relativeOffset = 0;
+};
+
+Parser.prototype.popState = function() {
+    check.argument(this.stateStack.length > 0,'Cannot pop a parser state off an empty stack.');
+    const state = this.stateStack.pop();
+    this.offset = state.offset;
+    this.relativeOffset = state.relativeOffset;
+};
 
 Parser.prototype.parseByte = function() {
     const v = this.data.getUint8(this.offset + this.relativeOffset);
@@ -412,7 +426,10 @@ Parser.prototype.parsePointer = function(description) {
     const structOffset = this.parseOffset16();
     if (structOffset > 0) {
         // NULL offset => return undefined
-        return new Parser(this.data, this.offset + structOffset).parseStruct(description);
+        this.pushState(this.offset + structOffset);
+        const result = this.parseStruct(description);
+        this.popState();
+        return result;
     }
     return undefined;
 };
@@ -421,7 +438,10 @@ Parser.prototype.parsePointer32 = function(description) {
     const structOffset = this.parseOffset32();
     if (structOffset > 0) {
         // NULL offset => return undefined
-        return new Parser(this.data, this.offset + structOffset).parseStruct(description);
+        this.pushState(this.offset + structOffset);
+        const result = this.parseStruct(description);
+        this.popState();
+        return result;
     }
     return undefined;
 };

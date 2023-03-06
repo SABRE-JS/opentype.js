@@ -165,11 +165,13 @@ subtableParsers[7] = function parseLookup7() {
     const substFormat = this.parseUShort();
     check.argument(substFormat === 1, 'GSUB Extension Substitution subtable identifier-format must be 1');
     const extensionLookupType = this.parseUShort();
-    const extensionParser = new Parser(this.data, this.offset + this.parseULong());
+    this.pushState(this.offset + this.parseULong());
+    const extension = subtableParsers[extensionLookupType].call(this);
+    this.popState();
     return {
         substFormat: 1,
         lookupType: extensionLookupType,
-        extension: subtableParsers[extensionLookupType].call(extensionParser)
+        extension: extension
     };
 };
 
